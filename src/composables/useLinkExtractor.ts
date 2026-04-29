@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import * as cheerio from 'cheerio'
 import type { CheerioAPI } from 'cheerio'
 import _, { trim } from 'lodash'
@@ -10,22 +10,30 @@ import {
   magnet_regex,
   each_magnet_regex,
   Ed2kLink,
+  FileLink,
+  FILE_EXTENSIONS,
   magnet_dn_reg,
   magnet_xt_reg_with_no_end
 } from '../types'
 import localalsJSON from '../../public/_locales/en/messages.json'
 
-export const TYPES = ["ed2k", "magnet"]
+export const TYPES = ["ed2k", "magnet", "file"]
 
 export function useLinkExtractor() {
   const documentBody = ref("")
   const magnetLinks = ref<MagnetLink[]>([])
   const ed2kLinks = ref<Ed2kLink[]>([])
+  const fileLinks = ref<FileLink[]>([])
   const base_magnetLinks = ref<MagnetLink[]>([])
   const base_ed2kLinks = ref<Ed2kLink[]>([])
+  const base_fileLinks = ref<FileLink[]>([])
   const activeName = ref(TYPES[0])
 
-  const hasData = computed(() => magnetLinks.value.length > 0 || ed2kLinks.value.length > 0)
+  const hasData = computed(() => 
+    magnetLinks.value.length > 0 || 
+    ed2kLinks.value.length > 0 ||
+    fileLinks.value.length > 0
+  )
 
   const t = (messageName: string) => {
     let message: string = ""
@@ -129,17 +137,64 @@ export function useLinkExtractor() {
     return []
   }
 
-  const responseFunc = (body: DocumentContentType) => {
+  const genFileLinks = (bodyString: string, currentUrl: string): FileLink[] => {
+    let $ = cheerio.load(bodyString)
+    const as = $("a[href]")
+    const resp: FileLink[] = []
+    const seenLinks = new Set<string>()
+
+    as.each((index, element) => {
+      let href = $(element).attr("href") || ""
+      if (href.startsWith("#") || href.startsWith("javascript:") || href.startsWith("magnet:") || href.startsWith("ed2k:")) return
+
+      try {
+        // Resolve relative URLs
+        const absoluteUrl = new URL(href, currentUrl).href
+        const lowerUrl = absoluteUrl.toLowerCase()
+
+        // Check for file extensions
+        const isFile = FILE_EXTENSIONS.some(ext => {
+          // Extension might be followed by query params
+          const extIndex = lowerUrl.indexOf(ext.toLowerCase())
+          if (extIndex === -1) return false
+          
+          const afterExt = lowerUrl.substring(extIndex + ext.length)
+          return afterExt === "" || afterExt.startsWith("?") || afterExt.startsWith("&") || afterExt.startsWith("/")
+        })
+
+        if (isFile && !seenLinks.has(absoluteUrl)) {
+          seenLinks.add(absoluteUrl)
+          const text = $(element).text().trim()
+          resp.push(new FileLink(absoluteUrl, resp.length, text))
+        }
+      } catch (e) {
+        // Skip invalid URLs
+      }
+    })
+
+    return resp
+  }
+
+  const responseFunc = async (body: DocumentContentType) => {
     documentBody.value = body.documentBody
+    
+    // Get current tab URL to resolve relative paths
+    const tab = await getCurrentTab()
+    const currentUrl = tab.url || ""
+
     magnetLinks.value = genMagnetLinks(documentBody.value)
     ed2kLinks.value = genEd2kLinks(documentBody.value)
+    fileLinks.value = genFileLinks(documentBody.value, currentUrl)
 
-    if (ed2kLinks.value.length === 0 && magnetLinks.value.length > 0) {
+    if (ed2kLinks.value.length === 0 && magnetLinks.value.length === 0 && fileLinks.value.length > 0) {
+      activeName.value = "file"
+    } else if (ed2kLinks.value.length === 0 && magnetLinks.value.length > 0) {
       activeName.value = TYPES[1]
     }
 
     base_ed2kLinks.value = [...ed2kLinks.value]
     base_magnetLinks.value = [...magnetLinks.value]
+    base_fileLinks.value = [...fileLinks.value]
   }
 
   const getCurrentTab = async (): Promise<chrome.tabs.Tab> => {
@@ -177,8 +232,10 @@ export function useLinkExtractor() {
     documentBody,
     magnetLinks,
     ed2kLinks,
+    fileLinks,
     base_magnetLinks,
     base_ed2kLinks,
+    base_fileLinks,
     activeName,
     hasData,
     t,

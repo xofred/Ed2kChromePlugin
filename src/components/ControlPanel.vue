@@ -38,6 +38,7 @@
       <el-button class="btn-select-all" type="primary" @click="$emit('select-all')" size="mini">{{ t("button_selectall") }}</el-button>
       <el-button class="btn-select-opposite" type="primary" @click="$emit('select-opposite')" size="mini">{{ t("button_selectopposite") }}</el-button>
       <el-button v-if="hasSelected" class="btn-copy" type="success" size="mini" @click="$emit('copy')">copy</el-button>
+      <el-button v-if="hasSelected" class="btn-download" type="success" size="mini" @click="$emit('download')">Download</el-button>
       <el-button v-if="hasSelected" class="btn-clean" type="danger" @click="$emit('clean')" size="mini">{{ t("clean_scope") }}</el-button>
     </el-col>
   </el-row>
@@ -65,6 +66,7 @@ const emit = defineEmits([
   'select-all',
   'select-opposite',
   'copy',
+  'download',
   'clean'
 ])
 

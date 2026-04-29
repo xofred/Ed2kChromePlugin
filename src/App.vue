@@ -16,6 +16,7 @@
             @select-all="selectAll"
             @select-opposite="selectOpposite"
             @copy="copy"
+            @download="download"
             @clean="clean"
           />
 
@@ -25,6 +26,7 @@
             :types="TYPES"
             :ed2kLinks="ed2kLinks"
             :magnetLinks="magnetLinks"
+            :fileLinks="fileLinks"
             @tab-change="clean"
             @selection-change="val => selectedData = val"
           />
@@ -75,8 +77,10 @@ import { useTableSelection } from './composables/useTableSelection'
 const {
   magnetLinks,
   ed2kLinks,
+  fileLinks,
   base_magnetLinks,
   base_ed2kLinks,
+  base_fileLinks,
   activeName,
   hasData,
   t,
@@ -98,8 +102,9 @@ const {
   selectAll,
   selectOpposite,
   copy,
+  download,
   copyToClipboard
-} = useTableSelection(magnetLinks, ed2kLinks, base_magnetLinks, base_ed2kLinks, activeName)
+} = useTableSelection(magnetLinks, ed2kLinks, fileLinks, base_magnetLinks, base_ed2kLinks, base_fileLinks, activeName)
 
 const linkTableRef = ref<any>(null)
 

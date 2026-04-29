@@ -5,8 +5,10 @@ import { TYPES } from './useLinkExtractor'
 export function useTableSelection(
   magnetLinks: any,
   ed2kLinks: any,
+  fileLinks: any,
   base_magnetLinks: any,
   base_ed2kLinks: any,
+  base_fileLinks: any,
   activeName: any
 ) {
   const selectedData = ref<any[]>([])
@@ -23,12 +25,15 @@ export function useTableSelection(
   
   const getCurrentTableData = () => {
     if (activeName.value === 'ed2k') return ed2kLinks.value
+    if (activeName.value === 'file') return fileLinks.value
     return magnetLinks.value
   }
 
   const setCurrentTableData = (data: any[]) => {
     if (activeName.value === 'ed2k') {
       ed2kLinks.value = data
+    } else if (activeName.value === 'file') {
+      fileLinks.value = data
     } else {
       magnetLinks.value = data
     }
@@ -37,6 +42,7 @@ export function useTableSelection(
   const resetAllTable = () => {
     ed2kLinks.value = [...base_ed2kLinks.value]
     magnetLinks.value = [...base_magnetLinks.value]
+    fileLinks.value = [...base_fileLinks.value]
   }
 
   const clean = () => {
@@ -126,6 +132,26 @@ export function useTableSelection(
     }
   }
 
+  const download = async () => {
+    if (selectedData.value.length < 1) {
+      alert("you should select at least one item!")
+      return
+    }
+
+    for (const item of selectedData.value) {
+      try {
+        chrome.downloads.download({
+          url: item.link,
+          filename: item.fileName,
+          conflictAction: 'uniquify'
+        })
+      } catch (err) {
+        console.error("Download failed:", err, item)
+      }
+    }
+    alert(`Started downloading ${selectedData.value.length} items.`)
+  }
+
   return {
     selectedData,
     fromNum,
@@ -140,6 +166,7 @@ export function useTableSelection(
     selectAll,
     selectOpposite,
     copy,
+    download,
     copyToClipboard
   }
 }

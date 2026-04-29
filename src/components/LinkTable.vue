@@ -33,6 +33,7 @@ const props = defineProps<{
   types: string[]
   ed2kLinks: any[]
   magnetLinks: any[]
+  fileLinks: any[]
 }>()
 
 const emit = defineEmits(['update:activeName', 'tab-change', 'selection-change'])
@@ -51,7 +52,9 @@ const setTableRef = (type: string, el: any) => {
 }
 
 const getTableData = (type: string) => {
-  return type === 'ed2k' ? props.ed2kLinks : props.magnetLinks
+  if (type === 'ed2k') return props.ed2kLinks
+  if (type === 'file') return props.fileLinks
+  return props.magnetLinks
 }
 
 defineExpose({

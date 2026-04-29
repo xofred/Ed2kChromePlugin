@@ -55,10 +55,24 @@ test('Popup 应当能从当前页面提取链接', async ({ page, extensionId, c
   // 验证 magnet 链接数量 (应当有 2 条)
   await expect(popupPage.locator('.el-tab-pane:not([style*="display: none"]) .el-table__row')).toHaveCount(2);
 
+  // 切换到 file 标签页
+  const fileTab = popupPage.locator('.el-tabs__item', { hasText: 'file' });
+  await fileTab.click();
+
+  // 等待 file 标签页的内容变为可见
+  const filePane = popupPage.locator('.el-tab-pane:not([style*="display: none"])');
+  await expect(filePane).toContainText('Download Movie');
+
+  // 验证 file 链接数量 (应当有 2 条)
+  await expect(filePane.locator('.el-table__row')).toHaveCount(2);
+
   // 4. 测试 UI 交互：全选
   await popupPage.click('.btn-select-all');
   
-  // 验证选中状态（选中数据后应当显示 'copy' 按钮）
+  // 验证选中状态（选中数据后应当显示 'copy' 和 'Download' 按钮）
   const copyButton = popupPage.locator('.btn-copy');
   await expect(copyButton).toBeVisible();
+
+  const downloadButton = popupPage.locator('.btn-download');
+  await expect(downloadButton).toBeVisible();
 });

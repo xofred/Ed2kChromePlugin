@@ -10,6 +10,14 @@ const magnet_xt_reg = /xt=urn:btih:(.+?)(?:&|$)/
 const magnet_xt_reg_with_no_end = /xt=urn:btih:(.+?)(?:&|$)/
 const magnet_dn_reg = /dn=(.+?)(?:[\"&]|$)/
 
+const FILE_EXTENSIONS = [
+    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", // Video
+    ".mp3", ".wav", ".flac", // Audio
+    ".zip", ".rar", ".7z", ".tar", ".gz", // Archive
+    ".pdf", ".epub", ".mobi", // Document
+    ".exe", ".dmg", ".apk", ".pkg", ".deb" // App/Binary
+]
+
 
 interface DispatchMessageType {
     dispatch: string
@@ -113,6 +121,32 @@ class Ed2kLink implements Link {
     }
 }
 
+class FileLink implements Link {
+    link: string
+    fileName: string
+    fileSize?: string
+    sequence: number
+
+    constructor(link: string, sequence: number, name?: string) {
+        this.link = link
+        this.sequence = sequence + 1
+        
+        if (name) {
+            this.fileName = name
+        } else {
+            // Try to extract filename from URL
+            try {
+                const url = new URL(link)
+                const pathname = url.pathname
+                const lastSlash = pathname.lastIndexOf('/')
+                this.fileName = pathname.substring(lastSlash + 1) || link
+            } catch (e) {
+                this.fileName = link
+            }
+        }
+        return this
+    }
+}
 
 // 例如http://goubo.io/tv/603757f5b446a37527f4bfc3, 打开console, document.body.innerHTML 字符串复制到这里，修改App.vue下的sendToContentScript方法，即可mock
 const TestString = ""
@@ -128,6 +162,8 @@ export {
     each_magnet_regex,
     magnet_name_regex,
     Ed2kLink,
+    FileLink,
+    FILE_EXTENSIONS,
     TestString,
     magnet_xt_reg,
     magnet_dn_reg,

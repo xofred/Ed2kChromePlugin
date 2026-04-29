@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ed2k_regex, magnet_regex, Ed2kLink, MagnetLink } from './types'
+import { ed2k_regex, magnet_regex, Ed2kLink, MagnetLink, FileLink } from './types'
 
 describe('链接解析正则', () => {
   it('应当匹配 ed2k 链接', () => {
@@ -29,5 +29,17 @@ describe('链接处理类 (Link Classes)', () => {
     const link = 'magnet:?xt=urn:btih:ABCDEF1234567890&dn=MyMovie.mkv'
     const magnet = new MagnetLink(link, 0)
     expect(magnet.fileName).toBe('MyMovie.mkv')
+  })
+
+  it('FileLink 类应当能从 URL 中提取文件名', () => {
+    const link = 'https://example.com/downloads/archive.zip?token=123'
+    const file = new FileLink(link, 0)
+    expect(file.fileName).toBe('archive.zip')
+  })
+
+  it('FileLink 类应当在提取失败时使用完整链接作为文件名', () => {
+    const link = 'invalid-url'
+    const file = new FileLink(link, 0)
+    expect(file.fileName).toBe('invalid-url')
   })
 })
