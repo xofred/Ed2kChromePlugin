@@ -2,77 +2,59 @@ import { test, expect } from '../fixtures';
 import path from 'path';
 
 test('Popup 应当能从当前页面提取链接', async ({ page, extensionId, context }) => {
-  // 捕获模拟页面的控制台日志
-  page.on('console', msg => console.log('页面日志:', msg.text()));
-
   // 1. 通过 HTTP 导航到模拟测试页面
-  await page.goto(`http://localhost:8000/tests/mock-page.html`);
+  const mockUrl = `http://localhost:8000/tests/mock-page.html`;
+  await page.goto(mockUrl);
   await page.waitForLoadState('load');
 
-  // 2. 打开插件 Popup 页面
-  const popupPage = await context.newPage();
-  
-  // 捕获 Popup 的控制台日志
-  popupPage.on('console', msg => console.log('POPUP 日志:', msg.text()));
+  // 获取模拟页面的 Tab ID (通过 Playwright 的 evaluate 和 chrome API)
+  // 我们需要在插件上下文中查询这个 URL 的 ID
+  const background = context.serviceWorkers()[0];
+  const mockTabId = await background.evaluate(async (url) => {
+    const [tab] = await chrome.tabs.query({ url });
+    return tab?.id;
+  }, mockUrl);
 
-  await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
+  // 2. 打开插件 Popup 页面，并注入 testTabId
+  const popupPage = await context.newPage();
+  await popupPage.goto(`chrome-extension://${extensionId}/popup.html?testTabId=${mockTabId}`);
 
   // 3. 验证 Popup 是否获取到了数据
   const ed2kTab = popupPage.locator('.el-tabs__item', { hasText: 'ed2k' });
   
   try {
-    // 等待 ed2k 标签页出现，如果没出现则尝试点击手动刷新按钮
     await expect(ed2kTab).toBeVisible({ timeout: 5000 });
   } catch (e) {
-    console.log('初次加载未发现数据，尝试点击刷新按钮...');
-    const refreshButton = popupPage.locator('.btn-refresh');
+    const refreshButton = popupPage.getByTestId('btn-refresh');
     if (await refreshButton.isVisible()) {
       await refreshButton.click();
       await expect(ed2kTab).toBeVisible({ timeout: 5000 });
     } else {
-      console.log('刷新按钮也未找到。页面内容:', await popupPage.innerHTML('body'));
       throw e;
     }
   }
   
-  // 检查 ed2k 标签页下的行数
-  // 我们只计算当前显示的（非隐藏的）表格行
   const activeRows = popupPage.locator('.el-tab-pane:not([style*="display: none"]) .el-table__row');
-  
-  const count = await activeRows.count();
-  console.log(`发现 ${count} 条活跃的 ed2k 链接行:`);
-  for (let i = 0; i < count; i++) {
-    const fileName = await activeRows.nth(i).locator('td').nth(2).innerText();
-    console.log(`- ${fileName}`);
-  }
-  // 根据 mock-page.html，应当有 3 条 ed2k 链接
   await expect(activeRows).toHaveCount(3);
 
   // 切换到 magnet 标签页
   const magnetTab = popupPage.locator('.el-tabs__item', { hasText: 'magnet' });
   await magnetTab.click();
 
-  // 验证 magnet 链接数量 (应当有 2 条)
+  // 验证 magnet 链接数量
   await expect(popupPage.locator('.el-tab-pane:not([style*="display: none"]) .el-table__row')).toHaveCount(2);
 
   // 切换到 file 标签页
   const fileTab = popupPage.locator('.el-tabs__item', { hasText: 'file' });
   await fileTab.click();
-
-  // 等待 file 标签页的内容变为可见
   const filePane = popupPage.locator('.el-tab-pane:not([style*="display: none"])');
   await expect(filePane).toContainText('Download Movie');
-
-  // 验证 file 链接数量 (应当有 2 条)
   await expect(filePane.locator('.el-table__row')).toHaveCount(2);
 
   // 4. 测试 UI 交互：全选
-  await popupPage.click('.btn-select-all');
+  await popupPage.getByTestId('btn-select-all').click();
   
-  // 验证选中状态（选中数据后应当显示 'copy' 和 'Download' 按钮）
-  const copyButton = popupPage.locator('.btn-copy');
-  await expect(copyButton).toBeVisible();
-
-  const downloadButton = popupPage.locator('.btn-download');
-  await expect(downloadButton).toBeVisible();
+  // 验证按钮可见性
+  await expect(popupPage.getByTestId('btn-copy')).toBeVisible();
+  await expect(popupPage.getByTestId('btn-download')).toBeVisible();
 });

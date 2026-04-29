@@ -198,21 +198,22 @@ export function useLinkExtractor() {
   }
 
   const getCurrentTab = async (): Promise<chrome.tabs.Tab> => {
-    // Try to find the active tab in the current window first
-    let [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    // 1. Check for test injection (Playwright environment)
+    const urlParams = new URLSearchParams(window.location.search)
+    const testTabId = urlParams.get('testTabId')
     
-    // If we don't have a tab, or it's an internal extension page, or we can't see the URL
-    if (!tab || !tab.url || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('chrome://')) {
-      const allTabs = await chrome.tabs.query({})
-      
-      // Find the first tab that is a real webpage
-      const targetTab = allTabs.find(t => t.url && 
-        !t.url.startsWith('chrome-extension://') && 
-        !t.url.startsWith('chrome://') &&
-        t.url !== 'about:blank')
-      if (targetTab) return targetTab
+    if (testTabId) {
+      try {
+        const tab = await chrome.tabs.get(parseInt(testTabId))
+        if (tab) return tab
+      } catch (e) {
+        console.error("Failed to get injected test tab:", testTabId, e)
+      }
     }
-    
+
+    // 2. Standard production logic: find the active tab in the current window
+    // Note: We only use activeTab permission, so we can only see the active tab of the current window.
+    let [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     return tab
   }
 

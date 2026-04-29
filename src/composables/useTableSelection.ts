@@ -145,6 +145,8 @@ export function useTableSelection(
           filename: item.fileName,
           conflictAction: 'uniquify'
         })
+        // Add a small delay to avoid overwhelming the browser/user with notifications
+        await new Promise(resolve => setTimeout(resolve, 100))
       } catch (err) {
         console.error("Download failed:", err, item)
       }
