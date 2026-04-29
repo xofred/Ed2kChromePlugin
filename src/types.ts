@@ -6,9 +6,9 @@ const magnet_name_regex = /dn=(.+?)&/
 const magnet_regex = /magnet:\?xt=urn:[a-z0-9]+:[a-z0-9]{32,40}(&dn=.+?[&\s])?/gi  //tr不要，查看是否有dn, 用&结束的话，把最后的一个字符去掉
 // 这里去掉g下表，可以获取dn里面的内容
 const each_magnet_regex = /magnet:\?xt=urn:[a-z0-9]+:[a-z0-9]{32,40}(&dn=(.+))?[&\s]/i  //tr不要，查看是否有dn, 用&结束的话，把最后的一个字符去掉
-const magnet_xt_reg = /xt=urn:btih:(.+?)&/
-const magnet_xt_reg_with_no_end = /xt=urn:btih:(.+?)&?/
-const magnet_dn_reg = /dn=(.+?)[\"&]/
+const magnet_xt_reg = /xt=urn:btih:(.+?)(?:&|$)/
+const magnet_xt_reg_with_no_end = /xt=urn:btih:(.+?)(?:&|$)/
+const magnet_dn_reg = /dn=(.+?)(?:[\"&]|$)/
 
 
 interface DispatchMessageType {
@@ -49,8 +49,7 @@ class MagnetLink implements Link {
 
         let countName: string = ""
         try {
-            let magnetObj = getDnByMagLink(link)
-            countName = magnetObj.dn as string
+            countName = getDnByMagLink(link)
         } catch (e) {
             // do nothing
         }
