@@ -143,8 +143,21 @@ export function useLinkExtractor() {
   }
 
   const getCurrentTab = async (): Promise<chrome.tabs.Tab> => {
-    let queryOptions = { active: true, currentWindow: true }
-    let [tab] = await chrome.tabs.query(queryOptions)
+    // Try to find the active tab in the current window first
+    let [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    
+    // If we don't have a tab, or it's an internal extension page, or we can't see the URL
+    if (!tab || !tab.url || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('chrome://')) {
+      const allTabs = await chrome.tabs.query({})
+      
+      // Find the first tab that is a real webpage
+      const targetTab = allTabs.find(t => t.url && 
+        !t.url.startsWith('chrome-extension://') && 
+        !t.url.startsWith('chrome://') &&
+        t.url !== 'about:blank')
+      if (targetTab) return targetTab
+    }
+    
     return tab
   }
 
